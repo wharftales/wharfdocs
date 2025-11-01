@@ -23,16 +23,22 @@ $docsEngine = new DocumentationEngine();
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
 
-// Remove query string
-$path = parse_url($requestUri, PHP_URL_PATH);
-
-// Remove script name if present (for PHP built-in server)
-$path = str_replace('/index.php', '', $path);
-
-// Remove base path
-$basePath = dirname($scriptName);
-if ($basePath !== '/') {
-    $path = str_replace($basePath, '', $path);
+// Support query parameter for servers without mod_rewrite
+// Example: index.php?path=getting-started/introduction
+if (isset($_GET['path'])) {
+    $path = $_GET['path'];
+} else {
+    // Remove query string
+    $path = parse_url($requestUri, PHP_URL_PATH);
+    
+    // Remove script name if present (for PHP built-in server)
+    $path = str_replace('/index.php', '', $path);
+    
+    // Remove base path
+    $basePath = dirname($scriptName);
+    if ($basePath !== '/') {
+        $path = str_replace($basePath, '', $path);
+    }
 }
 
 $path = trim($path, '/');
