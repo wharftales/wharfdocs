@@ -9,14 +9,21 @@ class DocumentationEngine
     private $navigation;
     private $searchIndexer;
     private $config;
+    private $cache;
 
     public function __construct()
     {
         $this->docsPath = __DIR__ . '/../docs';
-        $this->parser = new MarkdownParser();
-        $this->navigation = new NavigationBuilder($this->docsPath);
-        $this->searchIndexer = new SearchIndexer($this->docsPath);
         $this->loadConfig();
+        
+        // Initialize cache
+        $cacheEnabled = $this->config['cache']['enabled'] ?? true;
+        $cacheDir = $this->config['cache']['directory'] ?? __DIR__ . '/../cache';
+        $this->cache = new Cache($cacheDir, $cacheEnabled);
+        
+        $this->parser = new MarkdownParser();
+        $this->navigation = new NavigationBuilder($this->docsPath, $this->cache);
+        $this->searchIndexer = new SearchIndexer($this->docsPath, $this->cache);
     }
 
     private function loadConfig()
@@ -52,6 +59,17 @@ class DocumentationEngine
             return;
         }
 
+        // Try to get cached page data
+        $cacheKey = 'page_' . md5($path);
+        $cachedData = $this->cache->get($cacheKey, [$mdFile]);
+        
+        if ($cachedData !== null) {
+            // Use cached data but rebuild navigation (it has its own cache)
+            $cachedData['navigation'] = $this->navigation->build();
+            $this->renderPage($cachedData);
+            return;
+        }
+
         // Parse the markdown
         $content = file_get_contents($mdFile);
         $parsedContent = $this->parser->parse($content);
@@ -65,8 +83,8 @@ class DocumentationEngine
         // Get prev/next pages
         $prevNext = $this->getPrevNextPages($path);
         
-        // Render the page
-        $this->renderPage([
+        // Prepare page data
+        $pageData = [
             'content' => $parsedContent['html'],
             'title' => $metadata['title'] ?? $this->extractTitle($content),
             'description' => $metadata['description'] ?? '',
@@ -77,7 +95,13 @@ class DocumentationEngine
             'editUrl' => $this->generateEditUrl($mdFile),
             'prevPage' => $prevNext['prev'],
             'nextPage' => $prevNext['next']
-        ]);
+        ];
+        
+        // Cache the page data
+        $this->cache->set($cacheKey, $pageData);
+        
+        // Render the page
+        $this->renderPage($pageData);
     }
 
     private function findMarkdownFile($path)
@@ -241,5 +265,21 @@ class DocumentationEngine
     public function getNavigation()
     {
         return $this->navigation->build();
+    }
+    
+    /**
+     * Clear all caches
+     */
+    public function clearCache()
+    {
+        return $this->cache->clear();
+    }
+    
+    /**
+     * Get cache instance
+     */
+    public function getCache()
+    {
+        return $this->cache;
     }
 }

@@ -5,16 +5,43 @@ namespace WharfDocs;
 class NavigationBuilder
 {
     private $docsPath;
+    private $cache;
 
-    public function __construct($docsPath)
+    public function __construct($docsPath, $cache = null)
     {
         $this->docsPath = $docsPath;
+        $this->cache = $cache;
     }
 
     public function build()
     {
         if (!is_dir($this->docsPath)) {
             return [];
+        }
+
+        // Try to get cached navigation
+        if ($this->cache && $this->cache->isEnabled()) {
+            $cacheKey = 'navigation';
+            $cachedNav = $this->cache->get($cacheKey, [$this->docsPath]);
+            
+            if ($cachedNav !== null) {
+                // Check if any file in docs directory is newer than cache
+                $newestTime = $this->cache->getNewestModificationTime([$this->docsPath]);
+                $cacheFile = $this->cache->get($cacheKey . '_time');
+                
+                if ($cacheFile !== null && $newestTime <= $cacheFile) {
+                    return $cachedNav;
+                }
+            }
+            
+            // Build fresh navigation
+            $navigation = $this->scanDirectory($this->docsPath);
+            
+            // Cache it
+            $this->cache->set($cacheKey, $navigation);
+            $this->cache->set($cacheKey . '_time', time());
+            
+            return $navigation;
         }
 
         return $this->scanDirectory($this->docsPath);

@@ -17,5 +17,9 @@ return [
         'dark_mode' => true,
         'edit_link' => true,
         'toc' => true,
+    ],
+    'cache' => [
+        'enabled' => true,
+        'directory' => __DIR__ . '/cache',
     ]
 ];

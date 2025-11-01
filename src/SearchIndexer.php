@@ -6,15 +6,35 @@ class SearchIndexer
 {
     private $docsPath;
     private $index;
+    private $cache;
 
-    public function __construct($docsPath)
+    public function __construct($docsPath, $cache = null)
     {
         $this->docsPath = $docsPath;
+        $this->cache = $cache;
         $this->buildIndex();
     }
 
     private function buildIndex()
     {
+        // Try to get cached index
+        if ($this->cache && $this->cache->isEnabled()) {
+            $cacheKey = 'search_index';
+            $cachedIndex = $this->cache->get($cacheKey, [$this->docsPath]);
+            
+            if ($cachedIndex !== null) {
+                // Check if any file in docs directory is newer than cache
+                $newestTime = $this->cache->getNewestModificationTime([$this->docsPath]);
+                $cacheTime = $this->cache->get($cacheKey . '_time');
+                
+                if ($cacheTime !== null && $newestTime <= $cacheTime) {
+                    $this->index = $cachedIndex;
+                    return;
+                }
+            }
+        }
+        
+        // Build fresh index
         $this->index = [];
         
         if (!is_dir($this->docsPath)) {
@@ -22,6 +42,12 @@ class SearchIndexer
         }
         
         $this->indexDirectory($this->docsPath);
+        
+        // Cache the index
+        if ($this->cache && $this->cache->isEnabled()) {
+            $this->cache->set('search_index', $this->index);
+            $this->cache->set('search_index_time', time());
+        }
     }
 
     private function indexDirectory($dir, $basePath = '')
