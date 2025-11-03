@@ -7,7 +7,6 @@ Complete installation instructions for WharfDocs.
 Before installing WharfDocs, ensure you have:
 
 - **PHP 7.4 or higher** - Check with `php -v`
-- **Composer** - PHP dependency manager ([getcomposer.org](https://getcomposer.org))
 - **Web Server** - Apache, Nginx, or PHP's built-in server
 
 ## Step-by-Step Installation
@@ -24,19 +23,7 @@ cd wharfdocs
 - Download and extract the ZIP file
 - Navigate to the extracted directory
 
-### 2. Install PHP Dependencies
-
-Run Composer to install required packages:
-
-```bash
-composer install
-```
-
-This installs:
-- `erusev/parsedown` - Markdown parser
-- `erusev/parsedown-extra` - Extended Markdown features
-
-### 3. Configure Your Site
+### 2. Configure Your Site
 
 Edit `config.php` to customize your documentation:
 
@@ -51,7 +38,7 @@ return [
 ];
 ```
 
-### 4. Choose Your Server
+### 3. Choose Your Server
 
 #### Option A: PHP Built-in Server (Development)
 
@@ -142,7 +129,7 @@ sudo nginx -t
 sudo systemctl restart nginx
 ```
 
-### 5. Verify Installation
+### 4. Verify Installation
 
 Open your browser and navigate to your documentation site. You should see the default documentation pages.
 

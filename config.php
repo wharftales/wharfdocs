@@ -6,8 +6,18 @@ return [
     'theme' => 'default',
     'default_page' => 'getting-started/introduction',
     'github_repo' => '', // Set your GitHub repo URL for edit links
-    'logo' => '/assets/logo.svg',
+    'logo' => '/assets/logo.svg', // Logo for light mode (leave empty to hide)
+    'logo_dark' => '/assets/logo-dark.svg', // Logo for dark mode (leave empty to use light logo)
+    'copyright' => '', // Optional: Custom copyright text (leave empty for default)
     'social_links' => [
+        'github' => 'https://github.com/yourusername/wharfdocs',
+    ],
+    'social_links_sidebar' => [
+        'github' => 'https://github.com/yourusername/wharfdocs',
+        'twitter' => 'https://twitter.com/yourusername',
+        'discord' => 'https://discord.gg/yourinvite',
+    ],
+    'social_links_footer' => [
         'github' => 'https://github.com/yourusername/wharfdocs',
         'twitter' => 'https://twitter.com/yourusername',
         'discord' => 'https://discord.gg/yourinvite',

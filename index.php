@@ -4,6 +4,12 @@
  * Similar to Docus.dev functionality
  */
 
+// Security Headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 // Load Parsedown libraries
 require_once __DIR__ . '/lib/Parsedown.php';
 require_once __DIR__ . '/lib/ParsedownExtra.php';
@@ -50,6 +56,15 @@ if (strpos($path, 'api/') === 0) {
     
     if ($path === 'api/search') {
         $query = $_GET['q'] ?? '';
+        
+        // Validate and sanitize search query
+        $query = trim($query);
+        if (strlen($query) > 200) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Query too long']);
+            exit;
+        }
+        
         echo json_encode($docsEngine->search($query));
         exit;
     }
