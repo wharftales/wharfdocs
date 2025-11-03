@@ -24,8 +24,8 @@
     
     <style>
         :root {
-            --color-primary: #949494ff;
-            --color-primary-dark: #5f5f5fff;
+            --color-primary: #949494;
+            --color-primary-dark: #5f5f5f;
             --color-bg: #ffffff;
             --color-bg-secondary: #ffffff;
             --color-text: #1f2937;

@@ -135,10 +135,6 @@ Open your browser and navigate to your documentation site. You should see the de
 
 ## Troubleshooting
 
-### Issue: "Class 'Parsedown' not found"
-
-**Solution:** Run `composer install` to install dependencies.
-
 ### Issue: 404 errors on all pages
 
 **Solution:** 
@@ -179,8 +175,6 @@ To update WharfDocs:
 # Pull latest changes
 git pull origin main
 
-# Update dependencies
-composer update
 
 # Clear any cache (if implemented)
 rm -rf cache/*
@@ -190,7 +184,6 @@ rm -rf cache/*
 
 Before deploying to production:
 
-- [ ] Run `composer install --no-dev` to exclude development dependencies
 - [ ] Configure proper domain and SSL certificate
 - [ ] Set up proper file permissions
 - [ ] Configure error logging

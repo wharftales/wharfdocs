@@ -431,8 +431,7 @@ Production Server
 │   └─→ PHP-FPM
 │
 ├── PHP Runtime
-│   ├─→ Execute index.php
-│   └─→ Composer autoloader
+│   ├─→ Execute index.phpr
 │
 └── File System
     ├─→ docs/ (Markdown files)
