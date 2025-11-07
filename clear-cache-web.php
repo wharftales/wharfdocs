@@ -7,7 +7,7 @@
  */
 
 // Simple password protection (change this!)
-$CLEAR_CACHE_PASSWORD = 'wharfdocs2024';
+$CLEAR_CACHE_PASSWORD = 'wharfdocs2025';
 
 // Check password
 $password = $_GET['password'] ?? '';
