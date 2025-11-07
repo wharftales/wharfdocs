@@ -15,6 +15,7 @@ A modern, standalone PHP documentation system inspired by Docus.dev. Create beau
 🔗 **SEO-friendly Permalinks** - Clean URLs for better search rankings  
 📑 **Auto-generated Navigation** - Sidebar builds automatically from file structure  
 📖 **Table of Contents** - Automatic TOC for easy page navigation  
+🔄 **Multi-Version Support** - Maintain documentation for multiple versions  
 ⚡ **Fast & Simple** - No build process, just PHP and Markdown  
 🎯 **Easy to Deploy** - Works on any PHP hosting
 
@@ -128,9 +129,47 @@ return [
         'dark_mode' => true,
         'edit_link' => true,
         'toc' => true,
+    ],
+    'versions' => [
+        'enabled' => true,           // Enable multi-version support
+        'default' => 'v2.0',        // Default version
+        'show_selector' => true,    // Show version selector
     ]
 ];
 ```
+
+## Multi-Version Documentation
+
+WharfDocs supports maintaining documentation for multiple versions of your project. See [VERSIONING.md](VERSIONING.md) for complete documentation.
+
+### Quick Setup
+
+1. **Create version directories:**
+   ```bash
+   mkdir docs/v1.0 docs/v2.0
+   ```
+
+2. **Add version metadata:**
+   ```json
+   // docs/v1.0/version.json
+   {
+       "number": "1.0",
+       "label": "v1.0",
+       "status": "stable"
+   }
+   ```
+
+3. **Enable in config:**
+   ```php
+   'versions' => [
+       'enabled' => true,
+       'default' => 'v2.0',
+   ]
+   ```
+
+4. **Access versioned docs:**
+   - `/v1.0/getting-started/introduction`
+   - `/v2.0/getting-started/introduction`
 
 ## Deployment
 

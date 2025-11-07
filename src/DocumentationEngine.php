@@ -10,6 +10,8 @@ class DocumentationEngine
     private $searchIndexer;
     private $config;
     private $cache;
+    private $versionManager;
+    private $currentVersion;
 
     public function __construct()
     {
@@ -21,9 +23,11 @@ class DocumentationEngine
         $cacheDir = $this->config['cache']['directory'] ?? __DIR__ . '/../cache';
         $this->cache = new Cache($cacheDir, $cacheEnabled);
         
+        // Initialize version manager
+        $this->versionManager = new VersionManager($this->config, $this->docsPath, $this->cache);
+        
         $this->parser = new MarkdownParser();
-        $this->navigation = new NavigationBuilder($this->docsPath, $this->cache);
-        $this->searchIndexer = new SearchIndexer($this->docsPath, $this->cache);
+        // Navigation and search will be initialized per version
     }
 
     private function loadConfig()
@@ -46,26 +50,47 @@ class DocumentationEngine
 
     public function render($path = '')
     {
+        // Extract version from path
+        $this->currentVersion = $this->versionManager->extractVersionFromPath($path);
+        
+        // If no version in path and versioning is enabled, redirect to default version
+        if ($this->versionManager->isVersioningEnabled() && 
+            $this->currentVersion && 
+            !$this->versionManager->versionExists($this->currentVersion)) {
+            $this->currentVersion = $this->versionManager->getDefaultVersion();
+        }
+        
+        // Initialize navigation and search for current version
+        $versionDocsPath = $this->versionManager->getVersionDocsPath($this->currentVersion);
+        $this->navigation = new NavigationBuilder($versionDocsPath, $this->cache);
+        $this->searchIndexer = new SearchIndexer($versionDocsPath, $this->cache);
+        
+        // Remove version from path for file lookup
+        $docPath = $this->versionManager->removeVersionFromPath($path);
+        
         // Default to introduction page
-        if (empty($path) || $path === '/') {
-            $path = $this->config['default_page'];
+        if (empty($docPath) || $docPath === '/') {
+            $docPath = $this->config['default_page'];
         }
 
         // Find the markdown file
-        $mdFile = $this->findMarkdownFile($path);
+        $mdFile = $this->findMarkdownFile($docPath, $versionDocsPath);
         
         if (!$mdFile) {
             $this->render404();
             return;
         }
 
-        // Try to get cached page data
-        $cacheKey = 'page_' . md5($path);
+        // Try to get cached page data (include version in cache key)
+        $cacheKey = 'page_' . md5($this->currentVersion . '_' . $docPath);
         $cachedData = $this->cache->get($cacheKey, [$mdFile]);
         
         if ($cachedData !== null) {
             // Use cached data but rebuild navigation (it has its own cache)
             $cachedData['navigation'] = $this->navigation->build();
+            $cachedData['currentVersion'] = $this->currentVersion;
+            $cachedData['versions'] = $this->versionManager->getVersions();
+            $cachedData['versionManager'] = $this->versionManager;
             $this->renderPage($cachedData);
             return;
         }
@@ -81,7 +106,7 @@ class DocumentationEngine
         $permalink = $this->generatePermalink($path);
         
         // Get prev/next pages
-        $prevNext = $this->getPrevNextPages($path);
+        $prevNext = $this->getPrevNextPages($docPath);
         
         // Prepare page data
         $pageData = [
@@ -89,12 +114,16 @@ class DocumentationEngine
             'title' => $metadata['title'] ?? $this->extractTitle($content),
             'description' => $metadata['description'] ?? '',
             'toc' => $parsedContent['toc'],
-            'path' => $path,
+            'path' => $docPath,
+            'fullPath' => $path,
             'permalink' => $permalink,
             'navigation' => $this->navigation->build(),
             'editUrl' => $this->generateEditUrl($mdFile),
             'prevPage' => $prevNext['prev'],
-            'nextPage' => $prevNext['next']
+            'nextPage' => $prevNext['next'],
+            'currentVersion' => $this->currentVersion,
+            'versions' => $this->versionManager->getVersions(),
+            'versionManager' => $this->versionManager
         ];
         
         // Cache the page data
@@ -104,13 +133,18 @@ class DocumentationEngine
         $this->renderPage($pageData);
     }
 
-    private function findMarkdownFile($path)
+    private function findMarkdownFile($path, $basePath = null)
     {
+        // Use provided base path or default docs path
+        if ($basePath === null) {
+            $basePath = $this->docsPath;
+        }
+        
         // Split path into parts
         $parts = explode('/', $path);
         
         // Try to find the file with numeric prefixes
-        $currentPath = $this->docsPath;
+        $currentPath = $basePath;
         
         foreach ($parts as $part) {
             if (empty($part)) continue;
@@ -242,24 +276,47 @@ class DocumentationEngine
     private function render404()
     {
         http_response_code(404);
+        
+        // Initialize navigation for current version if not already done
+        if (!$this->navigation) {
+            $versionDocsPath = $this->versionManager->getVersionDocsPath($this->currentVersion);
+            $this->navigation = new NavigationBuilder($versionDocsPath, $this->cache);
+        }
+        
         $data = [
             'content' => '<h1>404 - Page Not Found</h1><p>The requested documentation page could not be found.</p>',
             'title' => '404 - Not Found',
             'description' => '',
             'toc' => [],
             'path' => '',
+            'fullPath' => '',
             'permalink' => '',
             'navigation' => $this->navigation->build(),
             'editUrl' => '#',
             'prevPage' => null,
-            'nextPage' => null
+            'nextPage' => null,
+            'currentVersion' => $this->currentVersion,
+            'versions' => $this->versionManager->getVersions(),
+            'versionManager' => $this->versionManager
         ];
         $this->renderPage($data);
     }
 
-    public function search($query)
+    public function search($query, $version = null)
     {
-        return $this->searchIndexer->search($query);
+        // If version specified, search in that version
+        if ($version !== null) {
+            $versionDocsPath = $this->versionManager->getVersionDocsPath($version);
+            $searchIndexer = new SearchIndexer($versionDocsPath, $this->cache);
+            return $searchIndexer->search($query);
+        }
+        
+        // Otherwise search in current version
+        if ($this->searchIndexer) {
+            return $this->searchIndexer->search($query);
+        }
+        
+        return [];
     }
 
     public function getNavigation()
@@ -281,5 +338,21 @@ class DocumentationEngine
     public function getCache()
     {
         return $this->cache;
+    }
+    
+    /**
+     * Get version manager instance
+     */
+    public function getVersionManager()
+    {
+        return $this->versionManager;
+    }
+    
+    /**
+     * Set current version
+     */
+    public function setCurrentVersion($version)
+    {
+        $this->currentVersion = $version;
     }
 }

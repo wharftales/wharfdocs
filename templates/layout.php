@@ -173,6 +173,39 @@
                     <?php endif; ?>
                     <span><?php echo htmlspecialchars($GLOBALS['config']['site_name'] ?? 'Documentation'); ?></span>
                 </a>
+                
+                <!-- Version Selector -->
+                <?php if (!empty($GLOBALS['config']['versions']['enabled']) && !empty($GLOBALS['config']['versions']['show_selector']) && !empty($versions)): ?>
+                <div class="relative ml-4">
+                    <button id="version-selector" class="px-3 py-1.5 text-sm border rounded-lg flex items-center space-x-2 hover:bg-gray-50 dark:hover:bg-gray-800" style="border-color: var(--color-border);">
+                        <span><?php echo htmlspecialchars($currentVersion ?? 'Select Version'); ?></span>
+                        <?php if (isset($versionManager)): ?>
+                            <span class="text-xs" style="color: var(--color-text-secondary);"><?php echo $versionManager->getVersionBadge($currentVersion); ?></span>
+                        <?php endif; ?>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div id="version-dropdown" class="absolute top-full mt-2 left-0 w-48 rounded-lg shadow-lg hidden z-50" style="background-color: var(--color-bg); border: 1px solid var(--color-border);">
+                        <?php foreach ($versions as $version): ?>
+                            <?php 
+                                $isActive = ($version['slug'] === $currentVersion);
+                                $versionPath = isset($versionManager) ? $versionManager->addVersionToPath($path ?? '', $version['slug']) : $version['slug'];
+                            ?>
+                            <a href="/<?php echo htmlspecialchars($versionPath); ?>" 
+                               class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 <?php echo $isActive ? 'font-semibold' : ''; ?>">
+                                <?php echo htmlspecialchars($version['label']); ?>
+                                <?php if (!empty($version['status']) && $version['status'] !== 'stable'): ?>
+                                    <span class="text-xs ml-1" style="color: var(--color-text-secondary);">(<?php echo htmlspecialchars(ucfirst($version['status'])); ?>)</span>
+                                <?php endif; ?>
+                                <?php if ($version['slug'] === ($versions[0]['slug'] ?? '')): ?>
+                                    <span class="text-xs ml-1" style="color: var(--color-primary);">Latest</span>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             
             <div class="flex items-center space-x-2">
@@ -308,7 +341,13 @@
                 <div class="mt-12 pt-8 border-t" style="border-color: var(--color-border);">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php if (!empty($prevPage)): ?>
-                        <a href="/<?php echo htmlspecialchars($prevPage['path']); ?>" 
+                        <?php 
+                            $prevPath = $prevPage['path'];
+                            if (isset($versionManager) && $versionManager->isVersioningEnabled() && isset($currentVersion)) {
+                                $prevPath = $versionManager->addVersionToPath($prevPage['path'], $currentVersion);
+                            }
+                        ?>
+                        <a href="/<?php echo htmlspecialchars($prevPath); ?>" 
                            class="group p-4 rounded-lg border transition-colors hover:border-blue-500"
                            style="border-color: var(--color-border);">
                             <div class="text-sm font-semibold mb-1" style="color: var(--color-text-secondary);">
@@ -323,7 +362,13 @@
                         <?php endif; ?>
                         
                         <?php if (!empty($nextPage)): ?>
-                        <a href="/<?php echo htmlspecialchars($nextPage['path']); ?>" 
+                        <?php 
+                            $nextPath = $nextPage['path'];
+                            if (isset($versionManager) && $versionManager->isVersioningEnabled() && isset($currentVersion)) {
+                                $nextPath = $versionManager->addVersionToPath($nextPage['path'], $currentVersion);
+                            }
+                        ?>
+                        <a href="/<?php echo htmlspecialchars($nextPath); ?>" 
                            class="group p-4 rounded-lg border transition-colors hover:border-blue-500 text-right"
                            style="border-color: var(--color-border);">
                             <div class="text-sm font-semibold mb-1" style="color: var(--color-text-secondary);">
@@ -527,13 +572,36 @@
                 }
             });
         });
+
+        // Version selector dropdown
+        const versionSelector = document.getElementById('version-selector');
+        const versionDropdown = document.getElementById('version-dropdown');
+        
+        if (versionSelector && versionDropdown) {
+            versionSelector.addEventListener('click', (e) => {
+                e.stopPropagation();
+                versionDropdown.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!versionSelector.contains(e.target) && !versionDropdown.contains(e.target)) {
+                    versionDropdown.classList.add('hidden');
+                }
+            });
+        }
     </script>
+    
 </body>
 </html>
 
 <?php
 function renderNavigation($items, $currentPath, $level = 0) {
     $html = '';
+    
+    // Get current version for building links
+    $currentVersion = $GLOBALS['currentVersion'] ?? null;
+    $versionManager = $GLOBALS['versionManager'] ?? null;
     
     foreach ($items as $item) {
         if ($item['type'] === 'section') {
@@ -548,12 +616,27 @@ function renderNavigation($items, $currentPath, $level = 0) {
         } else {
             $isActive = $item['path'] === $currentPath;
             $activeClass = $isActive ? ' active' : '';
-            $html .= '<a href="/' . htmlspecialchars($item['path']) . '" class="nav-item block' . $activeClass . '">';
+            
+            // Add version to path if versioning is enabled
+            $linkPath = $item['path'];
+            if ($versionManager && $versionManager->isVersioningEnabled() && $currentVersion) {
+                $linkPath = $versionManager->addVersionToPath($item['path'], $currentVersion);
+            }
+            
+            $html .= '<a href="/' . htmlspecialchars($linkPath) . '" class="nav-item block' . $activeClass . '">';
             $html .= htmlspecialchars($item['title']);
             $html .= '</a>';
         }
     }
     
     return $html;
+}
+
+// Make version data available globally for the function
+if (isset($currentVersion)) {
+    $GLOBALS['currentVersion'] = $currentVersion;
+}
+if (isset($versionManager)) {
+    $GLOBALS['versionManager'] = $versionManager;
 }
 ?>

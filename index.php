@@ -16,6 +16,7 @@ require_once __DIR__ . '/lib/ParsedownExtra.php';
 
 // Load WharfDocs classes
 require_once __DIR__ . '/src/Cache.php';
+require_once __DIR__ . '/src/VersionManager.php';
 require_once __DIR__ . '/src/DocumentationEngine.php';
 require_once __DIR__ . '/src/MarkdownParser.php';
 require_once __DIR__ . '/src/NavigationBuilder.php';
