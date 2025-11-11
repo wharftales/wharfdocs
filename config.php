@@ -30,7 +30,7 @@ return [
     ],
     'versions' => [
         'enabled' => true, // Set to false to disable versioning
-        'default' => '0.0.1-alpha', // Default version to show (null = latest)
+        'default' => '0.0.2', // Default version to show (null = latest)
         'show_selector' => true, // Show version selector in UI
         'label' => 'Version', // Label for version selector
     ]
